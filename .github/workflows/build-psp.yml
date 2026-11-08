@@ -64,6 +64,13 @@ jobs:
               <bool name="config_left_analog">true</bool>
           </resources>
           XML
+      - name: Prepare Gradle
+        run: |
+          chmod +x gradlew
+          sed -i 's#gradle-7.3-rc-1-bin.zip#gradle-7.3-bin.zip#' gradle/wrapper/gradle-wrapper.properties
+          sed -i '/distributionSha256Sum/d' gradle/wrapper/gradle-wrapper.properties
+          cat gradle/wrapper/gradle-wrapper.properties
+          for i in 1 2 3 4 5; do ./gradlew --version && break; echo "Gradle download failed, retry $i"; sleep 20; done
       - name: Build
         run: |
           grep -rn "hrinkResources" app/build.gradle* || true
