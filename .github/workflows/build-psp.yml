@@ -15,9 +15,13 @@ jobs:
           distribution: temurin
           java-version: '17'
       - name: Fetch game
+        env:
+          LINK: ${{ github.event.inputs.drive_link }}
         run: |
           pip install gdown
-          gdown --fuzzy "${{ github.event.inputs.drive_link }}" -O game_download
+          ID=$(echo "$LINK" | sed -E 's#.*/d/([^/?]+).*#\1#; t; s#.*[?&]id=([^&]+).*#\1#')
+          echo "Drive file id length: ${#ID}"
+          gdown "$ID" -O game_download
           ls -la game_download
       - name: Prepare game file
         run: |
