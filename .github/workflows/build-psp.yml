@@ -1,0 +1,74 @@
+name: Build PSP APK
+on:
+  workflow_dispatch:
+    inputs:
+      drive_link:
+        description: Google Drive share link to your game zip or ISO
+        required: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Fetch game
+        run: |
+          pip install gdown
+          gdown --fuzzy "${{ github.event.inputs.drive_link }}" -O game_download
+          ls -la game_download
+      - name: Prepare game file
+        run: |
+          mkdir -p game
+          if unzip -tq game_download >/dev/null 2>&1; then
+            unzip -o game_download -d game
+          else
+            cp game_download game/game.iso
+          fi
+          ISO=$(find game -type f \( -iname '*.iso' -o -iname '*.cso' -o -iname '*.pbp' \) | head -n1)
+          echo "Game file: $ISO"
+          ls -la "$ISO"
+          mkdir -p app/src/main/res/raw
+          cp "$ISO" app/src/main/res/raw/rom
+          rm -rf game game_download
+          ls -la app/src/main/res/raw
+      - name: Write config
+        run: |
+          cat > app/src/main/res/values/config.xml <<'XML'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <string name="config_id">transformersgamepsp</string>
+              <string name="config_name">Transformers The Game</string>
+              <string name="config_core">ppsspp</string>
+              <bool name="config_load_bytes">false</bool>
+              <string name="config_variables"></string>
+              <integer name="config_fast_forward_multiplier">2</integer>
+              <bool name="config_fullscreen">true</bool>
+              <integer name="config_orientation">2</integer>
+              <bool name="config_gamepad">true</bool>
+              <bool name="config_gamepad_haptic">true</bool>
+              <bool name="config_gamepad_a">true</bool>
+              <bool name="config_gamepad_b">true</bool>
+              <bool name="config_gamepad_x">true</bool>
+              <bool name="config_gamepad_y">true</bool>
+              <bool name="config_gamepad_start">true</bool>
+              <bool name="config_gamepad_select">true</bool>
+              <bool name="config_gamepad_l1">true</bool>
+              <bool name="config_gamepad_r1">true</bool>
+              <bool name="config_left_analog">true</bool>
+          </resources>
+          XML
+      - name: Build
+        run: |
+          echo "org.gradle.jvmargs=-Xmx5g -Dfile.encoding=UTF-8" >> gradle.properties
+          chmod +x gradlew
+          ./gradlew assembleRelease -Pandroid.injected.build.abi=arm64-v8a --stacktrace
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: psp-apk
+          path: app/build/outputs/apk/release/*arm64-v8a*.apk
+          retention-days: 1
+          compression-level: 0
