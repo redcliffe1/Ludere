@@ -66,6 +66,9 @@ jobs:
           XML
       - name: Build
         run: |
+          grep -rn "hrinkResources" app/build.gradle* || true
+          sed -i -E 's/(shrinkResources|isShrinkResources)([ =]+)true/\1\2false/' app/build.gradle app/build.gradle.kts 2>/dev/null || true
+          grep -rn "hrinkResources" app/build.gradle* || true
           echo "org.gradle.jvmargs=-Xmx5g -Dfile.encoding=UTF-8" >> gradle.properties
           chmod +x gradlew
           ./gradlew assembleRelease -Pandroid.injected.build.abi=arm64-v8a --stacktrace
